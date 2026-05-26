@@ -8,9 +8,12 @@
     "start": "next start",
     "lint": "eslint"
   },
+  "overrides": {
+    "@huggingface/inference": "2.6.4"
+  },
   "dependencies": {
     "@chroma-core/default-embed": "^0.1.9",
-    "@huggingface/inference": "^4.13.18",
+    "@huggingface/inference": "^2.6.4",
     "@langchain/community": "^0.3.40",
     "@langchain/core": "^0.3.80",
     "@langchain/groq": "^1.2.1",
