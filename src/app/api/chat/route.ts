@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { retrieveChunks, buildPrompt } from "@/src/lib/rag/retrieval";
 import Groq from "groq-sdk";
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
-
 export async function POST(req: NextRequest) {
+  // Initialize inside the function so it only runs at request time
+  const groq = new Groq({
+    apiKey: process.env.GROQ_API_KEY,
+  });
+
   try {
     const { message, docId } = await req.json();
 
@@ -28,14 +29,12 @@ export async function POST(req: NextRequest) {
 
     const prompt = buildPrompt(message, chunks);
 
-    // Get full response without streaming to avoid duplication
     const completion = await groq.chat.completions.create({
       model: "llama-3.3-70b-versatile",
       messages: [
         {
           role: "system",
-          content:
-            "You are a helpful assistant. Answer clearly and concisely in plain English. Do not repeat words or phrases.",
+          content: "You are a helpful assistant. Answer clearly and concisely in plain English. Do not repeat words or phrases.",
         },
         {
           role: "user",
