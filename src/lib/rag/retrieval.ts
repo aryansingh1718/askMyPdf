@@ -1,4 +1,5 @@
-import { getVectorStore } from "./ingest";
+import { CohereEmbeddings } from "@langchain/cohere";
+import { vectorIndex } from "../store";
 
 export interface RetrievedChunk {
   text: string;
@@ -11,25 +12,30 @@ export async function retrieveChunks(
   docId: string,
   topK: number = 4
 ): Promise<RetrievedChunk[]> {
-  const store = getVectorStore(docId);
+  const embeddings = new CohereEmbeddings({
+    apiKey: process.env.COHERE_API_KEY,
+    model: "embed-english-v3.0",
+  });
 
-  if (!store) {
-    return [];
-  }
+  const queryVector = await embeddings.embedQuery(query);
 
-  const results = await store.similaritySearch(query, topK);
+  const results = await vectorIndex.query({
+    vector: queryVector,
+    topK,
+    includeMetadata: true,
+    filter: `docId = '${docId}'`,
+  });
 
-  return results.map((doc, i) => ({
-    text: doc.pageContent,
-    chunkIndex: i,
-    fileName: doc.metadata?.fileName || "",
-  }));
+  return results
+    .filter((r) => r.metadata)
+    .map((r) => ({
+      text: r.metadata!.text as string,
+      chunkIndex: r.metadata!.chunkIndex as number,
+      fileName: r.metadata!.fileName as string,
+    }));
 }
 
-export function buildPrompt(
-  query: string,
-  chunks: RetrievedChunk[]
-): string {
+export function buildPrompt(query: string, chunks: RetrievedChunk[]): string {
   const context = chunks
     .map((c, i) => `[Source ${i + 1}]\n${c.text}`)
     .join("\n\n");

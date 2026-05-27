@@ -1,7 +1,6 @@
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import { CohereEmbeddings } from "@langchain/cohere";
-import { MemoryVectorStore } from "langchain/vectorstores/memory";
-import { vectorStores } from "../store";
+import { vectorIndex } from "../store";
 
 export async function ingestDocument(
   text: string,
@@ -10,7 +9,7 @@ export async function ingestDocument(
 ) {
   const embeddings = new CohereEmbeddings({
     apiKey: process.env.COHERE_API_KEY,
-    model: "embed-english-light-v3.0",
+    model: "embed-english-v3.0",
   });
 
   const splitter = new RecursiveCharacterTextSplitter({
@@ -19,12 +18,25 @@ export async function ingestDocument(
   });
 
   const chunks = await splitter.createDocuments([text], [{ docId, fileName }]);
-  const store = await MemoryVectorStore.fromDocuments(chunks, embeddings);
-  vectorStores.set(docId, store);
+
+  // Embed all chunks
+  const vectors = await embeddings.embedDocuments(
+    chunks.map((c) => c.pageContent)
+  );
+
+  // Store in Upstash
+  const records = vectors.map((vector, i) => ({
+    id: `${docId}_chunk_${i}`,
+    vector,
+    metadata: {
+      docId,
+      fileName,
+      text: chunks[i].pageContent,
+      chunkIndex: i,
+    },
+  }));
+
+  await vectorIndex.upsert(records);
 
   return { chunksStored: chunks.length };
-}
-
-export function getVectorStore(docId: string): MemoryVectorStore | undefined {
-  return vectorStores.get(docId);
 }

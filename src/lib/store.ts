@@ -1,11 +1,6 @@
-import { MemoryVectorStore } from "langchain/vectorstores/memory";
+import { Index } from "@upstash/vector";
 
-declare global {
-  var vectorStores: Map<string, MemoryVectorStore> | undefined;
-}
-
-if (!global.vectorStores) {
-  global.vectorStores = new Map<string, MemoryVectorStore>();
-}
-
-export const vectorStores = global.vectorStores;
+export const vectorIndex = new Index({
+  url: process.env.UPSTASH_VECTOR_REST_URL!,
+  token: process.env.UPSTASH_VECTOR_REST_TOKEN!,
+});
